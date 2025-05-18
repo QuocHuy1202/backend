@@ -131,43 +131,41 @@ VALUES (
 
 
 DECLARE @user_id INT = (SELECT user_id FROM Users WHERE email = 'gu@gmail.com');
+DECLARE @product_id INT = (SELECT product_id FROM Products WHERE name = N'KAPPA Women''s Sneakers');
 DECLARE @variant_id INT = (
     SELECT variant_id FROM ProductDetails
-    WHERE size = '36' AND color = 'yellow'
-      AND product_id IN (SELECT product_id FROM Products WHERE name = N'KAPPA Women''s Sneakers')
+    WHERE size = '36' AND color = 'yellow' AND product_id = @product_id
 );
 DECLARE @price INT = (
-    SELECT price FROM Products
-    WHERE product_id = (SELECT product_id FROM ProductDetails WHERE variant_id = @variant_id)
+    SELECT price FROM Products WHERE product_id = @product_id
 );
 DECLARE @quantity_needed INT = 1;
 DECLARE @stock_quantity INT = (
     SELECT quantity FROM ProductDetails WHERE variant_id = @variant_id
 );
 
-
 IF @stock_quantity >= @quantity_needed
 BEGIN
-   
+    -- Trừ tồn kho
     UPDATE ProductDetails
     SET quantity = quantity - @quantity_needed
     WHERE variant_id = @variant_id;
 
-    
+    -- Tạo đơn hàng mới
     INSERT INTO Orders (user_id, order_date, total_price, status)
     VALUES (@user_id, GETDATE(), @price * @quantity_needed, N'Đã đặt hàng');
 
     DECLARE @order_id INT = SCOPE_IDENTITY();
 
-    
-    INSERT INTO OrderItems (order_id, variant_id, quantity, price_each)
-    VALUES (@order_id, @variant_id, @quantity_needed, @price);
+    -- Thêm vào bảng OrderItems (đã thêm product_id)
+    INSERT INTO OrderItems (order_id, product_id, variant_id, quantity, price_each)
+    VALUES (@order_id, @product_id, @variant_id, @quantity_needed, @price);
 END
 ELSE
 BEGIN
-    
     RAISERROR(N'Sản phẩm không đủ số lượng tồn kho.', 16, 1);
 END
+
 
 -- câu c
 SELECT 
